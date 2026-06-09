@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'firebase_options.dart';
 import 'package:workwise/screens/welcome_page.dart';
 import 'screens/pre_production_page.dart';
 
-
-
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  FirebaseDatabase.instance.databaseURL =
+  'https://workwise-a6637-default-rtdb.asia-southeast1.firebasedatabase.app';
   runApp(const WorkwiseApp());
 }
 
