@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'material_verification_page.dart';
+import 'tank_cleaning_confirmation.dart';
 
 // Data model
 class JobSheet {
@@ -102,10 +102,10 @@ class _PreProductionPageState extends State<PreProductionPage> {
 
   Color _badgeColor(String status) {
     switch (status) {
-      case "NEW":         return const Color(0xFFEEDCFF);
-      case "IN PROGRESS": return const Color(0xFFDDEBFF);
-      case "COMPLETED":   return const Color(0xFFD8F3E8);
-      default:            return const Color(0xFFE5E7EB);
+      case "NEW":          return const Color(0xFFEEDCFF);
+      case "IN PROGRESS":  return const Color(0xFFDDEBFF);
+      case "COMPLETED":    return const Color(0xFFD8F3E8);
+      default:             return const Color(0xFFE5E7EB);
     }
   }
 
@@ -188,18 +188,27 @@ class _PreProductionPageState extends State<PreProductionPage> {
                       color: const Color(0xFF17335C),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.inventory_2_outlined, color: Colors.white, size: 18),
+                    child: const Icon(Icons.inventory_2_outlined,
+                        color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 10),
                   const Text("Workwise",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF17335C))),
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF17335C))),
                   const Spacer(),
-                  IconButton(onPressed: () {}, icon: const Icon(Icons.settings_outlined)),
+                  IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.settings_outlined)),
                 ],
               ),
               const SizedBox(height: 24),
               const Text("PRE-PRODUCTION",
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Color(0xFF17335C))),
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF17335C))),
               const SizedBox(height: 6),
               const Text("Select job sheet to begin inspection.",
                   style: TextStyle(color: Colors.grey, fontSize: 14)),
@@ -212,12 +221,15 @@ class _PreProductionPageState extends State<PreProductionPage> {
                     child: GestureDetector(
                       onTap: _pickDate,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 14),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _selectedDate != null ? const Color(0xFF17335C) : const Color(0xFFE5E7EB),
+                            color: _selectedDate != null
+                                ? const Color(0xFF17335C)
+                                : const Color(0xFFE5E7EB),
                           ),
                         ),
                         child: Row(
@@ -226,7 +238,9 @@ class _PreProductionPageState extends State<PreProductionPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                _selectedDate != null ? _formatDate(_selectedDate!) : "Pick Date",
+                                _selectedDate != null
+                                    ? _formatDate(_selectedDate!)
+                                    : "Pick Date",
                                 style: const TextStyle(fontSize: 13),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -234,7 +248,8 @@ class _PreProductionPageState extends State<PreProductionPage> {
                             if (_selectedDate != null)
                               GestureDetector(
                                 onTap: _clearDate,
-                                child: const Icon(Icons.close, size: 16, color: Colors.grey),
+                                child: const Icon(Icons.close,
+                                    size: 16, color: Colors.grey),
                               ),
                           ],
                         ),
@@ -244,12 +259,15 @@ class _PreProductionPageState extends State<PreProductionPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _selectedStatus != "All" ? const Color(0xFF17335C) : const Color(0xFFE5E7EB),
+                          color: _selectedStatus != "All"
+                              ? const Color(0xFF17335C)
+                              : const Color(0xFFE5E7EB),
                         ),
                       ),
                       child: DropdownButtonHideUnderline(
@@ -257,10 +275,16 @@ class _PreProductionPageState extends State<PreProductionPage> {
                           value: _selectedStatus,
                           isExpanded: true,
                           icon: const Icon(Icons.keyboard_arrow_down),
-                          style: const TextStyle(color: Colors.black, fontSize: 14),
-                          items: _statusOptions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                          style: const TextStyle(
+                              color: Colors.black, fontSize: 14),
+                          items: _statusOptions
+                              .map((s) => DropdownMenuItem(
+                              value: s, child: Text(s)))
+                              .toList(),
                           onChanged: (value) {
-                            if (value != null) setState(() => _selectedStatus = value);
+                            if (value != null) {
+                              setState(() => _selectedStatus = value);
+                            }
                           },
                         ),
                       ),
@@ -273,7 +297,8 @@ class _PreProductionPageState extends State<PreProductionPage> {
               // Search
               TextField(
                 controller: _searchController,
-                onChanged: (value) => setState(() => _searchQuery = value),
+                onChanged: (value) =>
+                    setState(() => _searchQuery = value),
                 decoration: InputDecoration(
                   hintText: "Search Job Sheets...",
                   prefixIcon: const Icon(Icons.search),
@@ -288,13 +313,17 @@ class _PreProductionPageState extends State<PreProductionPage> {
                       : null,
                   filled: true,
                   fillColor: Colors.white,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE5E7EB))),
+                      borderSide: const BorderSide(
+                          color: Color(0xFFE5E7EB))),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF17335C))),
+                      borderSide: const BorderSide(
+                          color: Color(0xFF17335C))),
                 ),
               ),
               const SizedBox(height: 20),
@@ -306,10 +335,13 @@ class _PreProductionPageState extends State<PreProductionPage> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Column(
                       children: [
-                        const Icon(Icons.search_off, size: 48, color: Colors.grey),
+                        const Icon(Icons.search_off,
+                            size: 48, color: Colors.grey),
                         const SizedBox(height: 12),
                         Text("No job sheets found",
-                            style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                            style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16)),
                       ],
                     ),
                   ),
@@ -329,7 +361,10 @@ class _PreProductionPageState extends State<PreProductionPage> {
 
               // Summary
               const Text("SUMMARY",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF17335C))),
+                  style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF17335C))),
               const SizedBox(height: 14),
               GridView.count(
                 shrinkWrap: true,
@@ -339,10 +374,23 @@ class _PreProductionPageState extends State<PreProductionPage> {
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.6,
                 children: [
-                  _SummaryCard(title: "ALL", count: "$total", color: Colors.white),
-                  _SummaryCard(title: "NEW", count: "$newCount", color: const Color(0xFF17335C), whiteText: true),
-                  _SummaryCard(title: "IN PROGRESS", count: "$inProgressCount", color: const Color(0xFFDDEBFF)),
-                  _SummaryCard(title: "COMPLETED", count: "$completedCount", color: const Color(0xFFD8F3E8)),
+                  _SummaryCard(
+                      title: "ALL",
+                      count: "$total",
+                      color: Colors.white),
+                  _SummaryCard(
+                      title: "NEW",
+                      count: "$newCount",
+                      color: const Color(0xFF17335C),
+                      whiteText: true),
+                  _SummaryCard(
+                      title: "IN PROGRESS",
+                      count: "$inProgressCount",
+                      color: const Color(0xFFDDEBFF)),
+                  _SummaryCard(
+                      title: "COMPLETED",
+                      count: "$completedCount",
+                      color: const Color(0xFFD8F3E8)),
                 ],
               ),
               const SizedBox(height: 80),
@@ -364,13 +412,14 @@ class _PreProductionPageState extends State<PreProductionPage> {
   }) {
     return GestureDetector(
       onTap: () {
+        // Navigate to Tank Cleaning Confirmation first
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => MaterialVerificationPage(
+            builder: (_) => TankCleaningConfirmation(
               jobId: id,
-              lane: lane,
-              productionDate: "$date - SHIFT A",
+              productName: title,
+              laneNumber: lane,
             ),
           ),
         );
@@ -382,7 +431,10 @@ class _PreProductionPageState extends State<PreProductionPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
@@ -390,19 +442,28 @@ class _PreProductionPageState extends State<PreProductionPage> {
           children: [
             Row(
               children: [
-                Text("$id • $date", style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text("$id • $date",
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(20)),
-                  child: Text(badge, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: badgeColor,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text(badge,
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            Text(description, style: const TextStyle(color: Colors.grey)),
+            Text(description,
+                style: const TextStyle(color: Colors.grey)),
           ],
         ),
       ),
@@ -427,18 +488,23 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+          color: color, borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: TextStyle(color: whiteText ? Colors.white70 : Colors.grey, fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  color: whiteText ? Colors.white70 : Colors.grey,
+                  fontWeight: FontWeight.w600)),
           const Spacer(),
           Text(count,
               style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: whiteText ? Colors.white : const Color(0xFF17335C))),
+                  color: whiteText
+                      ? Colors.white
+                      : const Color(0xFF17335C))),
         ],
       ),
     );

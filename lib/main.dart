@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'firebase_options.dart';
-import 'package:workwise/screens/welcome_page.dart';
-import 'screens/pre_production_page.dart';
+import 'screens/welcome_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +56,7 @@ class WorkwiseApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF8A99AD)),
         ),
       ),
-      home: const PreProductionPage(),
+      home: const WelcomePage(),
     );
   }
 }

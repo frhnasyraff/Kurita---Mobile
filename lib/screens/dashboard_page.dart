@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'pre_production_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -26,7 +27,7 @@ class DashboardPage extends StatelessWidget {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: primary.withValues(alpha: 0.08),
+                          color: primary.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(17),
                         ),
                         child: const Icon(
@@ -99,34 +100,48 @@ class DashboardPage extends StatelessWidget {
                     ),
                     child: const Row(
                       children: [
-                        Icon(
-                          Icons.search_rounded,
-                          color: secondaryText,
-                          size: 18,
-                        ),
+                        Icon(Icons.search_rounded,
+                            color: secondaryText, size: 18),
                         SizedBox(width: 10),
                         Text(
                           'Search by PO Number',
-                          style: TextStyle(color: secondaryText, fontSize: 13),
+                          style:
+                          TextStyle(color: secondaryText, fontSize: 13),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 14),
-                  const _ShipmentCard(
-                    company: 'Industrial Alloys Inc.',
-                    skuCount: '12 SKUs',
-                    date: 'Oct 24',
-                    status: 'PENDING',
-                    statusColor: Color(0xFF67A8F4),
+
+                  // Shipment cards — tap to go to Pre-Production
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PreProductionPage()),
+                    ),
+                    child: const _ShipmentCard(
+                      company: 'Industrial Alloys Inc.',
+                      skuCount: '12 SKUs',
+                      date: 'Oct 24',
+                      status: 'PENDING',
+                      statusColor: Color(0xFF67A8F4),
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  const _ShipmentCard(
-                    company: 'Global Logistics Corp',
-                    skuCount: '48 SKUs',
-                    date: 'Oct 25',
-                    status: 'IN PROCESS',
-                    statusColor: Color(0xFF5AB87A),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const PreProductionPage()),
+                    ),
+                    child: const _ShipmentCard(
+                      company: 'Global Logistics Corp',
+                      skuCount: '48 SKUs',
+                      date: 'Oct 25',
+                      status: 'IN PROCESS',
+                      statusColor: Color(0xFF5AB87A),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -249,11 +264,9 @@ class _ShipmentCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                      horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
+                    color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
@@ -278,40 +291,27 @@ class _ShipmentCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.widgets_outlined,
-                      size: 14,
-                      color: Color(0xFF91A0B2),
-                    ),
+                    const Icon(Icons.widgets_outlined,
+                        size: 14, color: Color(0xFF91A0B2)),
                     const SizedBox(width: 4),
-                    Text(
-                      skuCount,
-                      style: const TextStyle(
-                        color: Color(0xFF7C8CA0),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(skuCount,
+                        style: const TextStyle(
+                            color: Color(0xFF7C8CA0), fontSize: 12)),
                     const SizedBox(width: 12),
-                    const Icon(
-                      Icons.schedule_outlined,
-                      size: 14,
-                      color: Color(0xFF91A0B2),
-                    ),
+                    const Icon(Icons.schedule_outlined,
+                        size: 14, color: Color(0xFF91A0B2)),
                     const SizedBox(width: 4),
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        color: Color(0xFF7C8CA0),
-                        fontSize: 12,
-                      ),
-                    ),
+                    Text(date,
+                        style: const TextStyle(
+                            color: Color(0xFF7C8CA0), fontSize: 12)),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(width: 12),
-          const Icon(Icons.chevron_right_rounded, color: Color(0xFF8697AC)),
+          const Icon(Icons.chevron_right_rounded,
+              color: Color(0xFF8697AC)),
         ],
       ),
     );
@@ -340,23 +340,17 @@ class _StatsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF8A99AD),
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          Text(label,
+              style: const TextStyle(
+                  color: Color(0xFF8A99AD),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              color: accent,
-              fontSize: 32,
-              fontWeight: FontWeight.w300,
-            ),
-          ),
+          Text(value,
+              style: TextStyle(
+                  color: accent,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w300)),
         ],
       ),
     );
@@ -387,28 +381,39 @@ class _DashboardNavBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: items.map((item) {
             final (icon, label, selected) = item;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: selected
-                      ? const Color(0xFF17335C)
-                      : const Color(0xFF98A6B7),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected
-                        ? const Color(0xFF17335C)
-                        : const Color(0xFF98A6B7),
-                    fontSize: 10,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            return GestureDetector(
+              onTap: () {
+                if (label == 'Production') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const PreProductionPage()),
+                  );
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon,
+                      size: 20,
+                      color: selected
+                          ? const Color(0xFF17335C)
+                          : const Color(0xFF98A6B7)),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF17335C)
+                          : const Color(0xFF98A6B7),
+                      fontSize: 10,
+                      fontWeight: selected
+                          ? FontWeight.w800
+                          : FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           }).toList(),
         ),
