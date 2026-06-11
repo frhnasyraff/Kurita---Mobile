@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pre_production_page.dart';
+import 'stockIn/inventory_dashboard_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -386,8 +387,12 @@ class _DashboardNavBar extends StatelessWidget {
                 if (label == 'Production') {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                        builder: (_) => const PreProductionPage()),
+                    MaterialPageRoute(builder: (_) => const PreProductionPage()),
+                  );
+                } else if (label == 'Inventory') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const InventoryDashboardPage()),
                   );
                 }
               },
