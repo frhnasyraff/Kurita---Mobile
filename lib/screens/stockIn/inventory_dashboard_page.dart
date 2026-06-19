@@ -3,7 +3,10 @@ import '../widgets/bottom_nav_bar.dart';
 import '../dashboard_page.dart';
 import '../material_verification_page.dart';
 import '../pre_production_page.dart';
+import 'change_location_page.dart';
+import 'search_inventory_page.dart';
 import 'stockIn_page.dart';
+import 'product_stock_in_page.dart';
 
 class InventoryDashboardPage extends StatefulWidget {
   const InventoryDashboardPage({super.key});
@@ -13,7 +16,7 @@ class InventoryDashboardPage extends StatefulWidget {
 }
 
 class _InventoryDashboardPage extends State<InventoryDashboardPage> {
-  int _selectedNavBar = 1;
+  final int _selectedNavBar = 1;
 
   void _navigateTo(int index) {
     if (index == 1) return;
@@ -78,7 +81,14 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SearchInventoryPage(),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.search_outlined),
                   ),
                   IconButton(
@@ -122,7 +132,14 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                     child: _buildMenuCard(
                       icon: Icons.swap_horiz_outlined,
                       label: "CHANGE\nLOCATION",
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ChangeLocationPage(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -157,7 +174,14 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                     child: _buildMenuCard(
                       icon: Icons.swap_horiz_outlined,
                       label: "CHANGE\nLOCATION",
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ChangeLocationPage(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -165,7 +189,15 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                     child: _buildMenuCard(
                       icon: Icons.output_outlined,
                       label: "STOCK IN",
-                      onTap: () {},
+                      onTap: () {
+                        // ← UPDATED: navigate to Product Stock In
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProductStockInPage(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -175,7 +207,14 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
 
               // ── Search by Lot / Batch Button ──
               GestureDetector(
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SearchInventoryPage(),
+                    ),
+                  );
+                },
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -242,7 +281,7 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
