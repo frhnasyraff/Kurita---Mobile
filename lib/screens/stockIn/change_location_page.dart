@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../dashboard_page.dart';
-import '../material_verification_page.dart';
-import '../pre_production_page.dart';
+import '../QualityControl/dashboard_page.dart';
+import '../preproduct/material_verification_page.dart';
+import '../preproduct/pre_production_page.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 class ChangeLocationPage extends StatefulWidget {

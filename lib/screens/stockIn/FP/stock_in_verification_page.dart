@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
+import '../../widgets/bottom_nav_bar.dart';
 import 'product_stock_in_page.dart';
 
 class StockInVerificationPage extends StatefulWidget {

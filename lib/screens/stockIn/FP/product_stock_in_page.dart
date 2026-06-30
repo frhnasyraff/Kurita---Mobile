@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/bottom_nav_bar.dart';
+import '../../widgets/bottom_nav_bar.dart';
 import 'stock_in_verification_page.dart';
 import 'stock_in_scan_verification_page.dart';
 

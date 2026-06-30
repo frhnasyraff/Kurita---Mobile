@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:workwise/screens/dashboard_page.dart';
+import 'package:workwise/screens/QualityControl/dashboard_page.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});

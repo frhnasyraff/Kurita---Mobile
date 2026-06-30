@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
-import '../dashboard_page.dart';
-import '../material_verification_page.dart';
-import '../pre_production_page.dart';
+import '../QualityControl/dashboard_page.dart';
+import '../preproduct/material_verification_page.dart';
+import '../preproduct/pre_production_page.dart';
 import 'change_location_page.dart';
 import 'search_inventory_page.dart';
-import 'stockIn_page.dart';
-import 'product_stock_in_page.dart';
+import 'RM/stockIn_page.dart';
+import 'FP/product_stock_in_page.dart';
 
 class InventoryDashboardPage extends StatefulWidget {
   const InventoryDashboardPage({super.key});
@@ -63,11 +63,10 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF17335C),
-                      borderRadius: BorderRadius.circular(10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF17335C),
                     ),
-                    child: const Icon(Icons.inventory_2_outlined,
+                    child: const Icon(Icons.precision_manufacturing_outlined,
                         color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 10),
@@ -80,8 +79,9 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: () {
+                  _buildHeaderIconButton(
+                    icon: Icons.search_outlined,
+                    onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -89,11 +89,11 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.search_outlined),
                   ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.account_circle_outlined),
+                  const SizedBox(width: 8),
+                  _buildHeaderIconButton(
+                    icon: Icons.account_circle_outlined,
+                    onTap: () {},
                   ),
                 ],
               ),
@@ -122,85 +122,89 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
 
               // ── RAW MATERIAL Section ──
               _buildSectionHeader(
-                icon: Icons.science_outlined,
+                icon: Icons.change_history,
                 label: "RAW MATERIAL",
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMenuCard(
-                      icon: Icons.swap_horiz_outlined,
-                      label: "CHANGE\nLOCATION",
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ChangeLocationPage(),
-                          ),
-                        );
-                      },
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildMenuCard(
+                        icon: Icons.location_on_outlined,
+                        label: "CHANGE\nLOCATION",
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ChangeLocationPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMenuCard(
-                      icon: Icons.move_to_inbox_outlined,
-                      label: "STOCK IN",
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const StockInPage(),
-                          ),
-                        );
-                      },
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMenuCard(
+                        icon: Icons.move_to_inbox_outlined,
+                        label: "STOCK IN",
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StockInPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               const SizedBox(height: 28),
 
               // ── PRODUCT Section ──
               _buildSectionHeader(
-                icon: Icons.category_outlined,
+                icon: Icons.inventory_2,
                 label: "PRODUCT",
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMenuCard(
-                      icon: Icons.swap_horiz_outlined,
-                      label: "CHANGE\nLOCATION",
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ChangeLocationPage(),
-                          ),
-                        );
-                      },
+              IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildMenuCard(
+                        icon: Icons.location_on_outlined,
+                        label: "CHANGE\nLOCATION",
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ChangeLocationPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildMenuCard(
-                      icon: Icons.output_outlined,
-                      label: "STOCK IN",
-                      onTap: () {
-                        // ← UPDATED: navigate to Product Stock In
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ProductStockInPage(),
-                          ),
-                        );
-                      },
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildMenuCard(
+                        icon: Icons.inventory_2_outlined,
+                        label: "STOCK IN",
+                        onTap: () {
+                          // ← UPDATED: navigate to Product Stock In
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProductStockInPage(),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
 
               const SizedBox(height: 28),
@@ -220,7 +224,7 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFF17335C),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -249,20 +253,48 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
     );
   }
 
+  Widget _buildHeaderIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF2FF),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        onPressed: onTap,
+        icon: Icon(icon, size: 20, color: const Color(0xFF17335C)),
+      ),
+    );
+  }
+
   Widget _buildSectionHeader({required IconData icon, required String label}) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF17335C)),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF17335C),
-            letterSpacing: 0.5,
-          ),
+        Row(
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF17335C)),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF17335C),
+                letterSpacing: 0.5,
+                fontFamily: 'Inter',
+
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 8),
+        Container(height: 1, color: const Color(0xFFE5E7EB)),
       ],
     );
   }
@@ -278,7 +310,6 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
         padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -293,10 +324,10 @@ class _InventoryDashboardPage extends State<InventoryDashboardPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
+                color: const Color(0xFF17335C),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, size: 28, color: const Color(0xFF17335C)),
+              child: Icon(icon, size: 28, color: Colors.white),
             ),
             const SizedBox(height: 14),
             Text(
