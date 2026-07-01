@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'firebase_options.dart';
-import 'screens/welcome_page.dart';
+import 'screens/auth_gate.dart';
+import 'services/api_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,7 +11,10 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   FirebaseDatabase.instance.databaseURL =
-  'https://workwise-a6637-default-rtdb.asia-southeast1.firebasedatabase.app';
+      'https://workwise-a6637-default-rtdb.asia-southeast1.firebasedatabase.app';
+
+  await ApiClient.instance.init();
+
   runApp(const WorkwiseApp());
 }
 
@@ -56,7 +60,7 @@ class WorkwiseApp extends StatelessWidget {
           hintStyle: const TextStyle(color: Color(0xFF8A99AD)),
         ),
       ),
-      home: const WelcomePage(),
+      home: const AuthGate(),
     );
   }
 }

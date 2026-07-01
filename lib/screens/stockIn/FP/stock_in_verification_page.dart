@@ -1,11 +1,30 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../widgets/bottom_nav_bar.dart';
+import '../../../services/api_client.dart';
 import 'product_stock_in_page.dart';
+
+// ─────────────────────────────────────────
+// THEME (matches product_stock_in_page.dart)
+// ─────────────────────────────────────────
+class _Palette {
+  static const primary = Color(0xFF002046);
+  static const primaryContainer = Color(0xFF1B365D);
+  static const onPrimaryContainer = Color(0xFF87A0CD);
+  static const onPrimary = Color(0xFFFFFFFF);
+  static const surface = Color(0xFFF8F9FA);
+  static const surfaceContainerLowest = Color(0xFFFFFFFF);
+  static const surfaceContainerLow = Color(0xFFF3F4F5);
+  static const outline = Color(0xFF74777F);
+  static const outlineVariant = Color(0xFFC4C6CF);
+  static const onSurface = Color(0xFF191C1D);
+  static const onSurfaceVariant = Color(0xFF44474E);
+}
 
 class StockInVerificationPage extends StatefulWidget {
   final ProductStockInJob job;
-  // Called when SUBMIT STOCK IN is tapped. Lets the parent list page
-  // promote the job from NEW -> IN PROGRESS (LABELLED).
   final ValueChanged<ProductStockInJob>? onSubmitted;
 
   const StockInVerificationPage({
@@ -25,6 +44,8 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
   String _selectedPackaging = "IBC";
   bool _qrGenerated = false;
   String _traceabilityId = "";
+  String _qrData = "";
+  bool _isSubmitting = false;
 
   final List<String> _units = ["Kilograms (KG)", "Litres (L)", "Pieces (PCS)"];
   final List<String> _packagingTypes = ["IBC", "Drum", "Pallet", "Carton"];
@@ -32,7 +53,7 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
   @override
   void initState() {
     super.initState();
-    final numericQty = widget.job.quantity.replaceAll(RegExp(r'[^0-9]'), '');
+    final numericQty = widget.job.quantity.replaceAll(RegExp(r'[^0-9.]'), '');
     _qtyController = TextEditingController(text: numericQty);
     if (widget.job.packagingType.isNotEmpty) {
       final match = _packagingTypes.firstWhere(
@@ -50,14 +71,27 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
   }
 
   void _generateQrCode() {
+    final qtyText = _qtyController.text.trim();
+    final unitShort = _selectedUnit.split(" ").first;
+
     setState(() {
       _qrGenerated = true;
       _traceabilityId =
           "#QR-${widget.job.jobSheetNo.replaceFirst('JOB-', '')}-001X";
+
+      _qrData = jsonEncode({
+        "job_sheet_no": widget.job.jobSheetNo,
+        "batch_id": widget.job.batchId,
+        "product_name": widget.job.productName,
+        "quantity": qtyText,
+        "unit": unitShort,
+        "packaging_type": _selectedPackaging,
+        "traceability_id": _traceabilityId,
+      });
     });
   }
 
-  void _submitStockIn() {
+  Future<void> _submitStockIn() async {
     if (!_qrGenerated) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please generate QR code first")),
@@ -65,36 +99,99 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
       return;
     }
 
-    final qtyValue = _qtyController.text.trim();
-    final unitShort = _selectedUnit.split(" ").first;
-    final promotedJob = widget.job.copyWith(
-      status: "IN PROGRESS",
-      isLabelled: true,
-      packagingType: _selectedPackaging.toUpperCase(),
-      quantity: qtyValue.isEmpty ? widget.job.quantity : "$qtyValue $unitShort",
-    );
+    final qtyText = _qtyController.text.trim();
+    final qty = double.tryParse(qtyText);
 
-    widget.onSubmitted?.call(promotedJob);
+    if (qty == null || qty <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid quantity")),
+      );
+      return;
+    }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Stock In Submitted"),
-        content: Text(
-          "${widget.job.productName} has been labelled and moved to In Progress.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // close dialog
-              Navigator.of(context).pop(); // back to list
-            },
-            child: const Text("OK"),
+    setState(() => _isSubmitting = true);
+
+    try {
+      await ApiClient.instance.submitProductStockIn(
+        productionJobId: widget.job.productionJobId,
+        quantityKg: qty,
+        batchNumber: widget.job.batchId,
+        notes: 'Packaging: $_selectedPackaging | Label: $_traceabilityId',
+      );
+
+      final unitShort = _selectedUnit.split(" ").first;
+      final promotedJob = widget.job.copyWith(
+        status: "IN PROGRESS",
+        isLabelled: true,
+        packagingType: _selectedPackaging.toUpperCase(),
+        quantity: "$qtyText $unitShort",
+      );
+
+      widget.onSubmitted?.call(promotedJob);
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          title: Text("Stock In Submitted",
+              style: GoogleFonts.montserrat(fontWeight: FontWeight.w700)),
+          content: Text(
+            "${widget.job.productName} has been labelled and moved to In Progress.",
+            style: GoogleFonts.montserrat(fontSize: 13),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: Text("OK",
+                  style: GoogleFonts.montserrat(
+                      color: _Palette.primary, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to submit: $e")),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  TextStyle _mono({
+    double size = 14,
+    FontWeight weight = FontWeight.w500,
+    Color color = _Palette.onSurface,
+  }) {
+    return GoogleFonts.jetBrainsMono(
+      fontSize: size,
+      fontWeight: weight,
+      color: color,
+      height: 20 / 14,
+    );
+  }
+
+  TextStyle _labelCaps({
+    double size = 10,
+    Color color = _Palette.onSurfaceVariant,
+  }) {
+    return GoogleFonts.montserrat(
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+      color: color,
     );
   }
 
@@ -103,7 +200,7 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
     final job = widget.job;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6F8),
+      backgroundColor: _Palette.surface,
       bottomNavigationBar: BottomNavBar(
         items: const [
           (Icons.verified_outlined, 'Quality', false),
@@ -127,86 +224,61 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF17335C),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 18),
-                    ),
+                    child: const Icon(Icons.menu, color: _Palette.primary, size: 24),
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
+                  const SizedBox(width: 12),
+                  Text(
                     "Workwise",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF17335C),
+                    style: GoogleFonts.montserrat(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: _Palette.primary,
                     ),
                   ),
                   const Spacer(),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.notifications_outlined),
-                  ),
+                  const Icon(Icons.notifications_outlined, color: _Palette.primary, size: 22),
                 ],
               ),
 
               const SizedBox(height: 24),
 
-              const Text(
+              Text(
                 "STOCK IN VERIFICATION",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF6B7280),
-                  letterSpacing: 0.6,
-                ),
+                style: _labelCaps(size: 12),
               ),
               const SizedBox(height: 2),
               Text(
                 "#${job.jobSheetNo}",
-                style: const TextStyle(
+                style: GoogleFonts.montserrat(
                   fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF17335C),
+                  fontWeight: FontWeight.w800,
+                  color: _Palette.primary,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 8),
-              if (job.queueNumber > 0)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE4E6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFDC2626),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        "UNLABELLED",
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFDC2626),
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE4E6),
+                  borderRadius: BorderRadius.circular(2),
                 ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFDC2626),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text("UNLABELLED", style: _labelCaps(size: 9, color: const Color(0xFFDC2626))),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 20),
 
@@ -231,32 +303,32 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "QUANTITY (KG)",
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF9CA3AF),
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+                    Text("QUANTITY (KG)", style: _labelCaps()),
                     const SizedBox(height: 6),
                     TextField(
                       controller: _qtyController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: GoogleFonts.jetBrainsMono(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF17335C),
+                        color: _Palette.primary,
                       ),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: const Color(0xFFF5F6F8),
+                        fillColor: _Palette.surfaceContainerLow,
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
+                          borderRadius: BorderRadius.circular(4),
+                          borderSide: BorderSide(color: _Palette.outlineVariant),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          borderSide: BorderSide(color: _Palette.outlineVariant),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(4),
+                          borderSide: const BorderSide(color: _Palette.primary, width: 1.5),
                         ),
                       ),
                     ),
@@ -295,20 +367,13 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
                 child: ElevatedButton.icon(
                   onPressed: _generateQrCode,
                   icon: const Icon(Icons.qr_code_2, size: 18),
-                  label: const Text(
-                    "GENERATE QR CODE",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  label: Text("GENERATE QR CODE", style: _labelCaps(size: 13, color: Colors.white)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF17335C),
+                    backgroundColor: _Palette.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     elevation: 0,
                   ),
@@ -324,24 +389,29 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _submitStockIn,
-                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text(
-                    "SUBMIT STOCK IN",
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
+                  onPressed: _isSubmitting ? null : _submitStockIn,
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_circle_outline, size: 18),
+                  label: Text(
+                    _isSubmitting ? "SUBMITTING..." : "SUBMIT STOCK IN",
+                    style: _labelCaps(size: 13, color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _qrGenerated
-                        ? const Color(0xFF17335C)
-                        : const Color(0xFF9CA3AF),
+                    backgroundColor: (_qrGenerated && !_isSubmitting)
+                        ? _Palette.primary
+                        : _Palette.outline,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     elevation: 0,
                   ),
@@ -365,15 +435,8 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: _Palette.surfaceContainerLowest,
+        border: Border.all(color: _Palette.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,14 +446,13 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: GoogleFonts.montserrat(
                   fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF17335C),
-                  letterSpacing: 0.3,
+                  fontWeight: FontWeight.w700,
+                  color: _Palette.primary,
                 ),
               ),
-              Icon(titleIcon, size: 22, color: const Color(0xFF17335C)),
+              Icon(titleIcon, size: 20, color: _Palette.primary),
             ],
           ),
           const SizedBox(height: 14),
@@ -402,32 +464,16 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
 
   Widget _miniInfoBox(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F6F8),
-        borderRadius: BorderRadius.circular(8),
+        color: _Palette.surfaceContainerLow,
+        border: Border.all(color: _Palette.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 9,
-              color: Color(0xFF9CA3AF),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF17335C),
-            ),
-          ),
+          Text(label, style: _labelCaps(size: 9)),
+          Text(value, style: _mono(size: 13, weight: FontWeight.w700)),
         ],
       ),
     );
@@ -437,24 +483,9 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF9CA3AF),
-            letterSpacing: 0.4,
-          ),
-        ),
+        Text(label, style: _labelCaps()),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF17335C),
-          ),
-        ),
+        Text(value, style: _mono(size: 14, weight: FontWeight.w700, color: _Palette.primary)),
       ],
     );
   }
@@ -468,31 +499,23 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF9CA3AF),
-            letterSpacing: 0.4,
-          ),
-        ),
+        Text(label, style: _labelCaps()),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F6F8),
-            borderRadius: BorderRadius.circular(10),
+            color: _Palette.surfaceContainerLow,
+            border: Border.all(color: _Palette.outlineVariant),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
               icon: const Icon(Icons.keyboard_arrow_down, size: 18),
-              style: const TextStyle(
+              style: GoogleFonts.montserrat(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF17335C),
+                color: _Palette.primary,
               ),
               items: items
                   .map((item) =>
@@ -511,70 +534,57 @@ class _StockInVerificationPageState extends State<StockInVerificationPage> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-        ),
+        color: _Palette.surfaceContainerLowest,
+        border: Border.all(color: _Palette.outlineVariant),
       ),
       child: Column(
         children: [
           Container(
             width: 96,
             height: 96,
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               border: Border.all(
-                color: _qrGenerated
-                    ? const Color(0xFF17335C)
-                    : const Color(0xFFD1D5DB),
+                color: _qrGenerated ? _Palette.primary : _Palette.outlineVariant,
               ),
-              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              _qrGenerated ? Icons.qr_code_2 : Icons.qr_code_2_outlined,
-              size: 56,
-              color: _qrGenerated
-                  ? const Color(0xFF17335C)
-                  : const Color(0xFFD1D5DB),
-            ),
+            child: _qrGenerated
+                ? QrImageView(
+                    data: _qrData,
+                    version: QrVersions.auto,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: _Palette.primary,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: _Palette.primary,
+                    ),
+                  )
+                : Icon(
+                    Icons.qr_code_2_outlined,
+                    size: 56,
+                    color: _Palette.outlineVariant,
+                  ),
           ),
           const SizedBox(height: 14),
           Text(
             _qrGenerated ? "UNIQUE TRACEABILITY ID" : "NO QR CODE GENERATED",
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: _qrGenerated
-                  ? const Color(0xFF9CA3AF)
-                  : const Color(0xFFD1D5DB),
-            ),
+            style: _labelCaps(size: 10, color: _Palette.outline),
           ),
           const SizedBox(height: 4),
           Text(
             _qrGenerated ? _traceabilityId : "GENERATE QR CODE ABOVE",
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _qrGenerated
-                  ? const Color(0xFF17335C)
-                  : const Color(0xFFD1D5DB),
-            ),
+            style: _mono(size: 12, weight: FontWeight.w700, color: _Palette.primary),
           ),
           if (_qrGenerated) ...[
             const SizedBox(height: 14),
             TextButton.icon(
               onPressed: () {},
               icon: const Icon(Icons.print_outlined, size: 16),
-              label: const Text("PRINT QR LABEL"),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF17335C),
-                textStyle: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                ),
-              ),
+              label: Text("PRINT QR LABEL", style: _labelCaps(size: 11, color: _Palette.primary)),
+              style: TextButton.styleFrom(foregroundColor: _Palette.primary),
             ),
           ],
         ],

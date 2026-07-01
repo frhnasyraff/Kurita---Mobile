@@ -148,15 +148,13 @@ class AppRouter {
         ));
 
     // ProductionDetailPage: jobSheetNumber, productName, lane, quantity
+    // ProductionDetailPage: jobId (fetches its own data from the API)
       case Routes.productionDetail:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
         return _slide(ProductionDetailPage(
-          jobSheetNumber: args['jobSheetNumber'] as String? ?? '',
-          productName:    args['productName']    as String? ?? '',
-          lane:           args['lane']           as String? ?? '',
-          quantity:       args['quantity']       as String? ?? '',
+          jobId: args['jobId'] as int? ?? 0,
         ));
-
+        
     // WashTankPage: jobSheetId, productName, laneNumber (all optional)
       case Routes.washTank:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
