@@ -1,23 +1,32 @@
 import 'package:flutter/material.dart';
 
+import 'screens/debug_menu_page.dart';
 import 'screens/welcome_page.dart';
 import 'screens/login_page.dart';
 import 'screens/signup_page.dart';
-import 'screens/QualityControl/dashboard_page.dart';
-import 'screens/sampling/others_page.dart';
-import 'screens/QualityControl/inspection_details_page.dart';
-import 'screens/Production/production_page.dart';
-import 'screens/PreProduct/pre_production_page.dart';
-import 'screens/PreProduct/material_verification_page.dart';
-import 'screens/Production/production_detail_page.dart';
-import 'screens/PreProduct/wash_tank_page.dart';
-import 'screens/PreProduct/tank_cleaning_confirmation.dart';
-import 'screens/Production/product_inspection_page.dart';
-import 'screens/Production/adjustment_page.dart';
-import 'screens/Production/rm_balance_weight_page.dart';
-import 'screens/Production/quality_control_results_page.dart';
-import 'screens/sampling/sampling_pages.dart';
-import 'screens/delivery/delivery_pages.dart';
+import 'screens/dashboard_page.dart';
+import 'screens/others_page.dart';
+import 'screens/inspection_details_page.dart';
+import 'screens/production_page.dart';
+import 'screens/pre_production_page.dart';
+import 'screens/material_verification_page.dart';
+import 'screens/production_detail_page.dart';
+import 'screens/wash_tank_page.dart';
+import 'screens/tank_cleaning_confirmation.dart';
+import 'screens/product_inspection_page.dart';
+import 'screens/adjustment_page.dart';
+import 'screens/rm_balance_weight_page.dart';
+import 'screens/scanner_screen.dart';
+import 'screens/quality_control_results_page.dart';
+import 'screens/sampling_pages.dart';
+import 'screens/delivery_pages.dart';
+import 'screens/stock_count_dashboard_page.dart';
+import 'screens/stock_count_select_process_page.dart';
+import 'screens/stock_count_identify_location_page.dart';
+import 'screens/stock_count_location_verify_page.dart';
+import 'screens/stock_count_scan_verify_page.dart';
+import 'screens/stock_count_summary_page.dart';
+import 'screens/stock_count_models.dart';
 
 // ── Route name constants ──────────────────────────────────────────────────────
 
@@ -33,6 +42,12 @@ class Routes {
 
   // Inventory
   static const dashboard         = '/home/inventory/dashboard';
+  static const stockCountDashboard = '/home/inventory/stock-count';
+  static const stockCountSelectProcess = '/home/inventory/stock-count/select-process';
+  static const stockCountIdentifyLocation = '/home/inventory/stock-count/identify-location';
+  static const stockCountLocationVerify = '/home/inventory/stock-count/location-verify';
+  static const stockCountScanVerify = '/home/inventory/stock-count/scan-verify';
+  static const stockCountSummary = '/home/inventory/stock-count/summary';
   static const inspectionDetails = '/home/inventory/inspection-details';
   static const others            = '/home/others';
   static const preSamplingNew       = '/home/others/pre-sampling/new';
@@ -66,8 +81,8 @@ class AppRouter {
     switch (settings.name) {
 
     // ── Debug ──
-      // case Routes.debugMenu:
-      //   return _fade(const DebugMenuPage());
+      case Routes.debugMenu:
+        return _fade(const DebugMenuPage());
 
     // ── Auth ──
       case Routes.welcome:
@@ -88,6 +103,33 @@ class AppRouter {
     // ── Inventory ──
       case Routes.dashboard:
         return _slide(const DashboardPage());
+
+      case Routes.stockCountDashboard:
+        return _slide(const StockCountDashboardPage());
+
+      case Routes.stockCountSelectProcess:
+        return _slide(const StockCountSelectProcessPage());
+
+      case Routes.stockCountIdentifyLocation:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        final process =
+            args['process'] as StockCountProcess? ?? StockCountProcess.rawMaterial;
+        return _slide(StockCountIdentifyLocationPage(process: process));
+
+      case Routes.stockCountLocationVerify:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        final process =
+            args['process'] as StockCountProcess? ?? StockCountProcess.rawMaterial;
+        return _slide(StockCountLocationVerifyPage(process: process));
+
+      case Routes.stockCountScanVerify:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        final process =
+            args['process'] as StockCountProcess? ?? StockCountProcess.rawMaterial;
+        return _slide(StockCountScanVerifyPage(process: process));
+
+      case Routes.stockCountSummary:
+        return _slide(const StockCountSummaryPage());
 
       case Routes.inspectionDetails:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
@@ -127,12 +169,20 @@ class AppRouter {
       case Routes.deliveryPalletLoading:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
         final job = args['job'] as DeliveryJob? ?? _fallbackDeliveryJob;
-        return _slide(DeliveryPalletLoadingPage(job: job));
+        return _slide(DeliveryPalletLoadingPage(
+          jobId: job.numericId,
+          seedJob: job,
+        ));
 
       case Routes.deliveryPalletDetails:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
         final job = args['job'] as DeliveryJob? ?? _fallbackDeliveryJob;
-        return _slide(DeliveryPalletDetailsPage(job: job));
+        final flow = DeliveryFlowController.seeded(job);
+        return _slide(DeliveryPalletDetailsPage(
+          job: job,
+          flow: flow,
+          pallet: flow.pallets.first,
+        ));
 
     // ── Production hub ──
       case Routes.production:
@@ -148,13 +198,15 @@ class AppRouter {
         ));
 
     // ProductionDetailPage: jobSheetNumber, productName, lane, quantity
-    // ProductionDetailPage: jobId (fetches its own data from the API)
       case Routes.productionDetail:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
         return _slide(ProductionDetailPage(
-          jobId: args['jobId'] as int? ?? 0,
+          jobSheetNumber: args['jobSheetNumber'] as String? ?? '',
+          productName:    args['productName']    as String? ?? '',
+          lane:           args['lane']           as String? ?? '',
+          quantity:       args['quantity']       as String? ?? '',
         ));
-        
+
     // WashTankPage: jobSheetId, productName, laneNumber (all optional)
       case Routes.washTank:
         final args = settings.arguments as Map<String, dynamic>? ?? {};
@@ -195,8 +247,8 @@ class AppRouter {
         ));
 
     // ScannerScreen
-      // case Routes.scanner:
-      //   return _slide(const ScannerScreen());
+      case Routes.scanner:
+        return _slide(const ScannerScreen());
 
     // QualityControlResultsPage: jobSheetId, testedBy, updatedBy,
     //                            currentStatus, parameters (all optional)
@@ -258,7 +310,7 @@ class _MainShellState extends State<MainShell> {
   Widget _buildTab(int index) {
     switch (index) {
       case 0:  return const _EmptyTab(label: 'Quality');
-      case 1:  return const DashboardPage();
+      case 1:  return const StockCountDashboardPage();
       case 2:  return const ProductionPage();
       case 3:  return const DeliveryOverviewPage();
       case 4:  return const OthersPage();
