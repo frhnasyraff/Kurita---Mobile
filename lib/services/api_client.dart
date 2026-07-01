@@ -18,6 +18,11 @@ class ApiClient {
 
   String? _token;
 
+  // 👇 TEMPORARY DEBUG GETTER — remove once issue is fixed
+  String? get debugToken => _token;
+    bool get isLoggedIn => _token != null;
+
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _token = prefs.getString('auth_token');
@@ -173,15 +178,6 @@ class ApiClient {
     _throwIfError(res);
   }
 
-  /// Submits the stock-in confirmation step (quantity + UHF scan + approval).
-  ///
-  /// `warehouseLocationId` is now OPTIONAL — at this stage (Confirm Stock In
-  /// page) the material hasn't been assigned a rack/location yet. Location
-  /// assignment happens afterwards on the Stock In Progress screen, via
-  /// [setWarehouseLocation], once the user scans the QR location for that
-  /// material. When `warehouseLocationId` is null, the field is omitted from
-  /// the request body entirely so the backend can treat it as "no location"
-  /// rather than receiving an explicit zero/placeholder value.
   Future<void> submitStockIn(
     int receivingOrderId, {
     required double quantityKg,
@@ -204,11 +200,6 @@ class ApiClient {
     _throwIfError(res);
   }
 
-  /// Assigns/updates the warehouse location for a receiving order that has
-  /// already been submitted via [submitStockIn] without a location.
-  ///
-  /// Called from the Stock In Progress detail screen after the user scans
-  /// the QR code for a rack/location (e.g. "SCAN QR LOCATION" button).
   Future<void> setWarehouseLocation(
     int receivingOrderId, {
     required int warehouseLocationId,
@@ -223,9 +214,6 @@ class ApiClient {
     _throwIfError(res);
   }
 
-  /// Fetches the per-PO progress payload for the Stock In Progress detail
-  /// screen: PO/supplier header, completion percentage, and one entry per
-  /// material with its rack/qty/UHF-link/status.
   Future<Map<String, dynamic>> getStockInProgress(String poNumber) async {
     final res = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/stock-in/purchase-orders/$poNumber/progress'),
@@ -238,8 +226,6 @@ class ApiClient {
 
   // ── PRODUCT STOCK IN ──
 
-  /// Fetches production jobs that are completed, fully QC-passed, and
-  /// not yet stocked in. Used to populate the Product Stock In pending list.
   Future<List<dynamic>> getPendingProductStockIn() async {
     final res = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/product-stock-in/pending'),
@@ -250,11 +236,28 @@ class ApiClient {
     return body['data'] as List<dynamic>;
   }
 
-  /// Submits a Product Stock In for a QC-passed production job.
-  /// Backend creates the StockLot + an IN StockMovement linked to the job.
+  Future<List<dynamic>> getInProgressProductStockIn() async {
+    final res = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/product-stock-in/in-progress'),
+      headers: _headers,
+    );
+    _throwIfError(res);
+    final body = _decode(res) as Map<String, dynamic>;
+    return body['data'] as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getCompleteProductStockIn() async {
+    final res = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/product-stock-in/complete'),
+      headers: _headers,
+    );
+    _throwIfError(res);
+    final body = _decode(res) as Map<String, dynamic>;
+    return body['data'] as List<dynamic>;
+  }
+
   Future<Map<String, dynamic>> submitProductStockIn({
     required int productionJobId,
-    required int warehouseLocationId,
     required double quantityKg,
     String? batchNumber,
     String? manufacturingDate,
@@ -268,7 +271,6 @@ class ApiClient {
       headers: _headers,
       body: jsonEncode({
         'production_job_id': productionJobId,
-        'warehouse_location_id': warehouseLocationId,
         'quantity_kg': quantityKg,
         if (batchNumber != null) 'batch_number': batchNumber,
         if (manufacturingDate != null) 'manufacturing_date': manufacturingDate,
@@ -281,4 +283,40 @@ class ApiClient {
     _throwIfError(res);
     return _decode(res) as Map<String, dynamic>;
   }
+
+  Future<void> setProductStockInLocation(
+    int productionJobId, {
+    required int warehouseLocationId,
+  }) async {
+    final res = await http.patch(
+      Uri.parse('${ApiConfig.baseUrl}/product-stock-in/$productionJobId/location'),
+      headers: _headers,
+      body: jsonEncode({
+        'warehouse_location_id': warehouseLocationId,
+      }),
+    );
+    _throwIfError(res);
+  }
+
+  Future<Map<String, dynamic>> getProductStockInProgress(int productionJobId) async {
+    final res = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/product-stock-in/$productionJobId/progress'),
+      headers: _headers,
+    );
+    _throwIfError(res);
+    final body = _decode(res) as Map<String, dynamic>;
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  ///Production
+  
+  Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
+      queryParameters: query?.isNotEmpty == true ? query : null,
+    );
+    final res = await http.get(uri, headers: _headers);
+    _throwIfError(res);
+    return _decode(res) as Map<String, dynamic>;
+  }
+
 }

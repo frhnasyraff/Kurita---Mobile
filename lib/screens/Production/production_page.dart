@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
 
 import '../PreProduct/pre_production_page.dart';
 import '../PreProduct/material_verification_page.dart';
 import 'production_detail_page.dart';
+import '../../services/api_client.dart';
 
 // ── Shared Constants ──────────────────────────────────────────────────────────
 
@@ -15,60 +15,62 @@ const _textDark    = Color(0xFF1A2A3A);
 const _navInactive = Color(0xFF98A6B7);
 
 // ── Data model ────────────────────────────────────────────────────────────────
+//
+// Maps 1:1 onto ProductionController::jobSummary() in the Laravel API:
+// id, job_sheet_no, sap_batch_no, product_name, item_id, lot_number, lane,
+// planned_qty, produced_qty, unit, priority, current_status,
+// manufacturing_date, label_printed_at.
 
 class JobSheet {
   const JobSheet({
-    required this.jobNumber,
+    required this.id,
+    required this.jobSheetNo,
     required this.productName,
     required this.lane,
-    required this.quantity,
-    required this.codeBadge,
+    required this.quantityLabel,
+    required this.lotNumber,
     required this.status,
   });
 
-  final String jobNumber;
+  final int id;
+  final String jobSheetNo;
   final String productName;
   final String lane;
-  final String quantity;
-  final String codeBadge;
+  final String quantityLabel;
+  final String lotNumber;
+
+  /// One of: new, in_progress, pending_qc, pending_adjustment, completed.
   final String status;
 
-  factory JobSheet.fromSnapshot(String key, Map<dynamic, dynamic> data) {
-    // Normalise status → lowercase snake_case
-    final rawStatus = (data['status'] ?? 'new').toString().toLowerCase().trim();
-    final String status;
-    if (rawStatus == 'in progress' || rawStatus == 'in_progress') {
-      status = 'in_progress';
-    } else if (rawStatus == 'completed' || rawStatus == 'done') {
-      status = 'completed';
-    } else {
-      status = 'new';
-    }
-
-    // Volume + unit → "2,000 L"
-    final volume     = data['volume']      ?? data['quantity'] ?? '';
-    final volumeUnit = data['volume_unit'] ?? data['volumeUnit'] ?? 'L';
-    final qty = volume.toString().isNotEmpty
-        ? '${_formatNumber(volume.toString())} $volumeUnit'
+  factory JobSheet.fromJson(Map<String, dynamic> json) {
+    final qty  = json['produced_qty'] ?? json['planned_qty'];
+    final unit = json['unit'] ?? '';
+    final quantityLabel = qty != null
+        ? '${_formatNumber(qty.toString())} $unit'.trim()
         : '—';
 
     return JobSheet(
-      jobNumber  : data['id']           ??
-          data['job_number']   ??
-          data['jobNumber']    ?? key,
-      productName: data['name']         ??
-          data['product_name'] ??
-          data['productName']  ??
-          data['description']  ?? 'Unnamed Job',
-      lane       : data['lane']         ??
-          data['lane_id']      ?? '—',
-      quantity   : qty,
-      codeBadge  : data['code']         ??
-          data['product_code'] ??
-          data['productCode']  ??
-          data['sku']          ?? '',
-      status     : status,
+      id           : json['id'] as int,
+      jobSheetNo   : (json['job_sheet_no'] ?? '—').toString(),
+      productName  : (json['product_name'] ?? 'Unnamed Job').toString(),
+      lane         : (json['lane'] ?? '—').toString(),
+      quantityLabel: quantityLabel,
+      lotNumber    : (json['lot_number'] ?? '').toString(),
+      status       : (json['current_status'] ?? 'new').toString(),
     );
+  }
+
+  /// Collapses the API's finer-grained statuses (pending_qc,
+  /// pending_adjustment) into the three tabs the UI shows.
+  String get tabBucket {
+    switch (status) {
+      case 'new':
+        return 'new';
+      case 'completed':
+        return 'completed';
+      default: // in_progress, pending_qc, pending_adjustment
+        return 'in_progress';
+    }
   }
 
   static String _formatNumber(String raw) {
@@ -79,19 +81,34 @@ class JobSheet {
   }
 }
 
-// ── Firebase fetch ────────────────────────────────────────────────────────────
+class JobSheetPage {
+  const JobSheetPage({required this.jobs, required this.counts});
 
-Future<List<JobSheet>> fetchJobSheets() async {
-  final ref = FirebaseDatabase.instance.ref('job_sheets');
-  final snapshot = await ref.get();
+  final List<JobSheet> jobs;
+  final Map<String, int> counts; // {new, in_progress, completed}
+}
 
-  if (!snapshot.exists || snapshot.value == null) return [];
+// ── API fetch ─────────────────────────────────────────────────────────────────
 
-  final raw = Map<dynamic, dynamic>.from(snapshot.value as Map);
-  return raw.entries.map((e) {
-    final data = Map<dynamic, dynamic>.from(e.value as Map);
-    return JobSheet.fromSnapshot(e.key.toString(), data);
-  }).toList();
+Future<JobSheetPage> fetchJobSheets({String? tab, String? search}) async {
+  final query = <String, String>{
+    if (tab != null && tab != 'all') 'tab': tab,
+    if (search != null && search.isNotEmpty) 'search': search,
+  };
+
+  final json = await ApiClient.instance.get('/production', query: query);
+  final data = (json['data'] as List? ?? [])
+      .map((e) => JobSheet.fromJson(e as Map<String, dynamic>))
+      .toList();
+
+  final countsJson = json['counts'] as Map? ?? {};
+  final counts = {
+    'new'        : (countsJson['new'] ?? 0) as int,
+    'in_progress': (countsJson['in_progress'] ?? 0) as int,
+    'completed'  : (countsJson['completed'] ?? 0) as int,
+  };
+
+  return JobSheetPage(jobs: data, counts: counts);
 }
 
 // ── Production Hub Page ───────────────────────────────────────────────────────
@@ -109,7 +126,6 @@ class ProductionPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Row(
@@ -118,7 +134,6 @@ class ProductionPage extends StatelessWidget {
                       width: 32, height: 32,
                       decoration: BoxDecoration(
                         color: const Color.fromRGBO(23, 51, 92, 0.08),
-                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Icon(Icons.inventory_2_rounded,
                           color: _primary, size: 16),
@@ -132,7 +147,6 @@ class ProductionPage extends StatelessWidget {
                       width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: _border),
                       ),
                       child: const Icon(Icons.settings_outlined,
@@ -231,7 +245,6 @@ class _ModuleCard extends StatelessWidget {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE4EAF2)),
           boxShadow: const [
             BoxShadow(color: Color(0x0A18304D), blurRadius: 8, offset: Offset(0, 3)),
@@ -243,7 +256,6 @@ class _ModuleCard extends StatelessWidget {
               width: 48, height: 48,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
             ),
@@ -285,12 +297,12 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
   String _filter = 'new';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  late Future<List<JobSheet>> _jobsFuture;
+  late Future<JobSheetPage> _pageFuture;
 
   @override
   void initState() {
     super.initState();
-    _jobsFuture = fetchJobSheets();
+    _pageFuture = fetchJobSheets();
   }
 
   @override
@@ -298,6 +310,8 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
     _searchController.dispose();
     super.dispose();
   }
+
+  void _reload() => setState(() => _pageFuture = fetchJobSheets());
 
   bool _matchesSearch(String text, String query) {
     if (query.isEmpty) return true;
@@ -315,17 +329,14 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
 
   List<JobSheet> _filtered(List<JobSheet> jobs) {
     return jobs.where((job) {
-      final matchesFilter = job.status == _filter;
+      final matchesFilter = job.tabBucket == _filter;
       final matchesSearch = _searchQuery.isEmpty ||
-          _matchesSearch(job.jobNumber, _searchQuery) ||
+          _matchesSearch(job.jobSheetNo, _searchQuery) ||
           _matchesSearch(job.productName, _searchQuery) ||
           _matchesSearch(job.lane, _searchQuery);
       return matchesFilter && matchesSearch;
     }).toList();
   }
-
-  int _countByStatus(List<JobSheet> jobs, String status) =>
-      jobs.where((j) => j.status == status).length;
 
   @override
   Widget build(BuildContext context) {
@@ -336,7 +347,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -345,7 +355,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                     width: 32, height: 32,
                     decoration: BoxDecoration(
                       color: const Color.fromRGBO(23, 51, 92, 0.08),
-                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(Icons.inventory_2_rounded,
                         color: _primary, size: 16),
@@ -359,7 +368,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                     width: 36, height: 36,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: _border),
                     ),
                     child: const Icon(Icons.settings_outlined,
@@ -372,7 +380,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                       width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: _border),
                       ),
                       child: const Icon(Icons.arrow_back_ios_new_rounded,
@@ -391,11 +398,11 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('PRODUCTION',
-                      style: TextStyle(color: _textDark, fontSize: 28,
+                      style: TextStyle(color: _textDark, fontSize: 30,
                           fontWeight: FontWeight.w900, letterSpacing: -0.5)),
                   SizedBox(height: 3),
                   Text('Select a job sheet to manage production tasks.',
-                      style: TextStyle(color: _textMuted, fontSize: 12,
+                      style: TextStyle(color: _textMuted, fontSize: 15,
                           fontWeight: FontWeight.w500)),
                 ],
               ),
@@ -403,7 +410,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
 
             const SizedBox(height: 16),
 
-            // ── Search ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
@@ -413,7 +419,7 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                     fontWeight: FontWeight.w500),
                 decoration: InputDecoration(
                   hintText: 'Search Job Sheet, Product or Lane',
-                  hintStyle: const TextStyle(color: _textMuted, fontSize: 12),
+                  hintStyle: const TextStyle(color: _textMuted, fontSize: 14),
                   prefixIcon: const Icon(Icons.search_rounded,
                       color: _textMuted, size: 20),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -431,13 +437,10 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 14),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
                       borderSide: const BorderSide(color: _border)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
                       borderSide: const BorderSide(color: _border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
                       borderSide: const BorderSide(color: _primary, width: 1.4)),
                 ),
               ),
@@ -445,10 +448,9 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
 
             const SizedBox(height: 16),
 
-            // ── FutureBuilder: tabs + list ──
             Expanded(
-              child: FutureBuilder<List<JobSheet>>(
-                future: _jobsFuture,
+              child: FutureBuilder<JobSheetPage>(
+                future: _pageFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -456,6 +458,9 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                   }
 
                   if (snapshot.hasError) {
+                    final message = snapshot.error is ApiException
+                        ? (snapshot.error as ApiException).message
+                        : 'Could not load job sheets.';
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -466,15 +471,14 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                                 color: _textMuted, size: 40),
                             const SizedBox(height: 12),
                             Text(
-                              'Could not load job sheets.\n${snapshot.error}',
+                              message,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                   color: _textMuted, fontSize: 13),
                             ),
                             const SizedBox(height: 16),
                             TextButton.icon(
-                              onPressed: () => setState(
-                                      () => _jobsFuture = fetchJobSheets()),
+                              onPressed: _reload,
                               icon: const Icon(Icons.refresh_rounded,
                                   color: _primary),
                               label: const Text('Retry',
@@ -486,32 +490,31 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                     );
                   }
 
-                  final jobs = snapshot.data ?? [];
-                  final filtered = _filtered(jobs);
+                  final page = snapshot.data ?? const JobSheetPage(jobs: [], counts: {});
+                  final filtered = _filtered(page.jobs);
 
                   return Column(
                     children: [
-                      // ── Tabs ──
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Row(
                           children: [
                             _Tab(
                               label: 'NEW',
-                              count: _countByStatus(jobs, 'new'),
+                              count: page.counts['new'] ?? 0,
                               active: _filter == 'new',
                               onTap: () => setState(() => _filter = 'new'),
                             ),
                             _Tab(
                               label: 'IN PROGRESS',
-                              count: _countByStatus(jobs, 'in_progress'),
+                              count: page.counts['in_progress'] ?? 0,
                               active: _filter == 'in_progress',
                               onTap: () =>
                                   setState(() => _filter = 'in_progress'),
                             ),
                             _Tab(
                               label: 'COMPLETED',
-                              count: _countByStatus(jobs, 'completed'),
+                              count: page.counts['completed'] ?? 0,
                               active: _filter == 'completed',
                               onTap: () =>
                                   setState(() => _filter = 'completed'),
@@ -522,7 +525,6 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
 
                       const Divider(color: _border, height: 1),
 
-                      // ── List ──
                       Expanded(
                         child: filtered.isEmpty
                             ? Center(
@@ -539,8 +541,7 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                                       fontSize: 13)),
                               const SizedBox(height: 6),
                               TextButton.icon(
-                                onPressed: () => setState(
-                                        () => _jobsFuture = fetchJobSheets()),
+                                onPressed: _reload,
                                 icon: const Icon(Icons.refresh_rounded,
                                     color: _primary, size: 16),
                                 label: const Text('Refresh',
@@ -552,14 +553,16 @@ class _ProductionJobSheetPageState extends State<ProductionJobSheetPage> {
                         )
                             : RefreshIndicator(
                           color: _primary,
-                          onRefresh: () async => setState(
-                                  () => _jobsFuture = fetchJobSheets()),
+                          onRefresh: () async => _reload(),
                           child: ListView.builder(
                             padding: const EdgeInsets.fromLTRB(
                                 20, 12, 20, 12),
                             itemCount: filtered.length,
                             itemBuilder: (context, index) =>
-                                _JobCard(job: filtered[index]),
+                                _JobCard(
+                                  job: filtered[index],
+                                  onChanged: _reload,
+                                ),
                           ),
                         ),
                       ),
@@ -611,14 +614,14 @@ class _Tab extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       color: active ? _primary : _textMuted,
-                      fontSize: 9,
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.5)),
               const SizedBox(height: 2),
               Text('($count)',
                   style: TextStyle(
                       color: active ? _primary : _textMuted,
-                      fontSize: 9,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600)),
             ],
           ),
@@ -631,12 +634,13 @@ class _Tab extends StatelessWidget {
 // ── Job Card ──────────────────────────────────────────────────────────────────
 
 class _JobCard extends StatelessWidget {
-  const _JobCard({required this.job});
+  const _JobCard({required this.job, required this.onChanged});
 
   final JobSheet job;
+  final VoidCallback onChanged;
 
   Color get _badgeColor {
-    switch (job.status) {
+    switch (job.tabBucket) {
       case 'in_progress':
         return const Color(0xFFF59E0B);
       case 'completed':
@@ -649,23 +653,23 @@ class _JobCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProductionDetailPage(
-            jobSheetNumber: job.jobNumber,
-            productName: job.productName,
-            lane: job.lane,
-            quantity: job.quantity,
+      onTap: () async {
+        // ProductionDetailPage now fetches its own data from
+        // GET /api/production/{id} using just the job id, so the full
+        // detail (materials, qc_results, adjustments) is always fresh.
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductionDetailPage(jobId: job.id),
           ),
-        ),
-      ),
+        );
+        onChanged();
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFE4EAF2)),
           boxShadow: const [
             BoxShadow(color: Color(0x0A18304D), blurRadius: 6,
@@ -679,47 +683,92 @@ class _JobCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(job.jobNumber,
-                      style: const TextStyle(
-                          color: _primary, fontSize: 12,
-                          fontWeight: FontWeight.w800, letterSpacing: 0.2)),
-                  const SizedBox(height: 3),
-                  Text(job.productName,
-                      style: const TextStyle(
-                          color: Color(0xFF1A2A3A), fontSize: 14,
-                          fontWeight: FontWeight.w700, height: 1.2)),
+                Text(
+                  job.jobSheetNo.startsWith('#')
+                      ? job.jobSheetNo
+                      : '#${job.jobSheetNo}',
+                  style: const TextStyle(
+                    color: _primary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.3,
+                  ),
+                ),
                   const SizedBox(height: 10),
-                  Row(
+                  Text(
+                    job.productName,
+                    style: const TextStyle(
+                      color: _textDark,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1.2,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 25,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      const Icon(Icons.apps_rounded,
-                          size: 13, color: _textMuted),
-                      const SizedBox(width: 4),
-                      Text(job.lane,
-                          style: const TextStyle(color: _textMuted,
-                              fontSize: 11, fontWeight: FontWeight.w500)),
-                      const SizedBox(width: 14),
-                      const Icon(Icons.opacity_rounded,
-                          size: 13, color: _textMuted),
-                      const SizedBox(width: 4),
-                      Text(job.quantity,
-                          style: const TextStyle(color: _textMuted,
-                              fontSize: 11, fontWeight: FontWeight.w500)),
-                      const SizedBox(width: 14),
-                      if (job.codeBadge.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.apps_rounded,
+                            size: 15,
+                            color: _textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            job.lane,
+                            style: const TextStyle(
+                              color: _textMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.opacity_outlined,
+                            size: 15,
+                            color: _textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            job.quantityLabel,
+                            style: const TextStyle(
+                              color: _textDark,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      if (job.lotNumber.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _badgeColor.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: _badgeColor.withOpacity(0.35),
-                                width: 0.8),
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-                          child: Text(job.codeBadge,
-                              style: TextStyle(
-                                  color: _badgeColor, fontSize: 10,
-                                  fontWeight: FontWeight.w700)),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE8F0FE),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            job.lotNumber,
+                            style: const TextStyle(
+                              color: Color(0xFF4B5EAA),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                     ],
                   ),
