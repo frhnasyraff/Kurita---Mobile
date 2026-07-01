@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'widgets/bottom_nav_bar.dart';
 import 'PreProduct/material_verification_page.dart';
 import 'stockIn/inventory_dashboard_page.dart';
@@ -6,11 +6,12 @@ import 'PreProduct/pre_production_page.dart';
 import 'QualityControl/dashboard_page.dart';
 import 'QualityControl/quality_control_page.dart';
 import 'Production/production_page.dart';
-import 'Delivery/delivery_pages.dart';
+import 'delivery_dashboard.dart';
+import '../delivery/theme.dart';
 
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MODEL
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class HubAlert {
   final String title;
   final String subtitle;
@@ -25,9 +26,9 @@ class HubAlert {
 
 enum AlertSeverity { critical, info }
 
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // PAGE
-// ─────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class OperationalHubPage extends StatefulWidget {
   const OperationalHubPage({super.key});
 
@@ -36,7 +37,7 @@ class OperationalHubPage extends StatefulWidget {
 }
 
 class _OperationalHubPageState extends State<OperationalHubPage> {
-  // ── Theme palette (light, from HTML tailwind config) ──
+  // â”€â”€ Theme palette (light, from HTML tailwind config) â”€â”€
   static const Color primary = Color(0xFF002046);
   static const Color background = Color(0xFFF8F9FA);
   static const Color surfaceLowest = Color(0xFFFFFFFF);
@@ -78,7 +79,7 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
         page = const ProductionPage();
         break;
       case "DELIVERY":
-        page = const DeliveryOverviewPage();
+        page = const DeliveryTheme(child: DeliveryDashboardScreen());
         break;
       case "OTHERS":
         // TODO: Others / Settings page
@@ -118,7 +119,7 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header ──
+              // â”€â”€ Header â”€â”€
               Row(
                 children: [
                   Container(
@@ -159,7 +160,7 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
 
               const SizedBox(height: 20),
 
-              // ── Title ──
+              // â”€â”€ Title â”€â”€
               const Text(
                 "OPERATIONAL HUB",
                 style: TextStyle(
@@ -180,7 +181,7 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
 
               const SizedBox(height: 20),
 
-              // ── Module list ──
+              // â”€â”€ Module list â”€â”€
               _buildModuleTile(
                 icon: Icons.verified_outlined,
                 label: "QUALITY",
@@ -213,7 +214,7 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
 
               const SizedBox(height: 24),
 
-              // ── Active Alerts ──
+              // â”€â”€ Active Alerts â”€â”€
               const Text(
                 "ACTIVE ALERTS",
                 style: TextStyle(
@@ -234,9 +235,9 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
     );
   }
 
-  // ─────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // MODULE TILE
-  // ─────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildModuleTile({
     required IconData icon,
     required String label,
@@ -310,9 +311,9 @@ class _OperationalHubPageState extends State<OperationalHubPage> {
     );
   }
 
-  // ─────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // ALERT CARD
-  // ─────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAlertCard(HubAlert alert) {
     final isCritical = alert.severity == AlertSeverity.critical;
     final bgColor = isCritical ? errorContainer : secondaryContainer;
